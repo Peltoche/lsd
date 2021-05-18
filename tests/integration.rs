@@ -98,21 +98,6 @@ fn test_list_all_populated_directory() {
 }
 
 #[test]
-fn test_almost_sort_with_folder() {
-    let tmp = tempdir();
-    tmp.child("z").create_dir_all().unwrap();
-    tmp.child("z/a").touch().unwrap();
-
-    cmd()
-        .current_dir(tmp.path())
-        .arg("-a")
-        .arg("--ignore-config")
-        .arg("z")
-        .assert()
-        .stdout(predicate::str::is_match("\\.\n\\.\\.\na\n$").unwrap());
-}
-
-#[test]
 fn test_list_inode_populated_directory() {
     let dir = tempdir();
     dir.child("one").touch().unwrap();
@@ -121,7 +106,7 @@ fn test_list_inode_populated_directory() {
     #[cfg(windows)]
     let matched = "- one\n\\- two\n$";
     #[cfg(unix)]
-    let matched = "\\d+ +one\n\\d+ +two\n$";
+    let matched = "\\d+ one\n\\d+ two\n$";
 
     cmd()
         .arg("--inode")
@@ -143,10 +128,7 @@ fn test_list_block_inode_populated_directory_without_long() {
     dir.child("one").touch().unwrap();
     dir.child("two").touch().unwrap();
 
-    #[cfg(windows)]
-    let matched = "- one\n\\- two\n$";
-    #[cfg(unix)]
-    let matched = "\\d+ +one\n\\d+ +two\n$";
+    let matched = "one\ntwo\n$";
 
     cmd()
         .arg("--blocks")
@@ -166,7 +148,7 @@ fn test_list_block_inode_populated_directory_with_long() {
     #[cfg(windows)]
     let matched = "- one\n\\- two\n$";
     #[cfg(unix)]
-    let matched = "\\d+ +one\n\\d+ +two\n$";
+    let matched = "\\d+ one\n\\d+ two\n$";
 
     cmd()
         .arg("--long")
@@ -413,71 +395,6 @@ fn test_bad_utf_8_name() {
         .arg(tmp.path())
         .assert()
         .stdout(predicate::str::is_match("bad-name\u{fffd}\u{fffd}.ext\n$").unwrap());
-}
-
-#[test]
-fn test_tree() {
-    let tmp = tempdir();
-    tmp.child("one").touch().unwrap();
-    tmp.child("one.d").create_dir_all().unwrap();
-    tmp.child("one.d/two").touch().unwrap();
-
-    cmd()
-        .arg(tmp.path())
-        .arg("--tree")
-        .assert()
-        .stdout(predicate::str::is_match("├── one\n└── one.d\n    └── two\n$").unwrap());
-}
-
-#[test]
-fn test_tree_all_not_show_self() {
-    let tmp = tempdir();
-    tmp.child("one").touch().unwrap();
-    tmp.child("one.d").create_dir_all().unwrap();
-    tmp.child("one.d/two").touch().unwrap();
-    tmp.child("one.d/.hidden").touch().unwrap();
-
-    cmd()
-        .arg(tmp.path())
-        .arg("--tree")
-        .arg("--all")
-        .assert()
-        .stdout(
-            predicate::str::is_match("├── one\n└── one.d\n    ├── .hidden\n    └── two\n$")
-                .unwrap(),
-        );
-}
-
-#[test]
-fn test_tree_show_edge_before_name() {
-    let tmp = tempdir();
-    tmp.child("one.d").create_dir_all().unwrap();
-    tmp.child("one.d/two").touch().unwrap();
-
-    cmd()
-        .arg(tmp.path())
-        .arg("--tree")
-        .arg("--long")
-        .assert()
-        .stdout(predicate::str::is_match("└── two\n$").unwrap());
-}
-
-#[test]
-fn test_tree_d() {
-    let tmp = tempdir();
-    tmp.child("one").touch().unwrap();
-    tmp.child("two").touch().unwrap();
-    tmp.child("one.d").create_dir_all().unwrap();
-    tmp.child("one.d/one").touch().unwrap();
-    tmp.child("one.d/one.d").create_dir_all().unwrap();
-    tmp.child("two.d").create_dir_all().unwrap();
-
-    cmd()
-        .arg(tmp.path())
-        .arg("--tree")
-        .arg("-d")
-        .assert()
-        .stdout(predicate::str::is_match("├── one.d\n│   └── one.d\n└── two.d\n$").unwrap());
 }
 
 fn cmd() -> Command {
