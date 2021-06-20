@@ -42,6 +42,7 @@ pub enum SortColumn {
     Time,
     Size,
     Version,
+    GitStatus,
 }
 
 impl Configurable<Self> for SortColumn {
@@ -62,6 +63,8 @@ impl Configurable<Self> for SortColumn {
             Some(Self::Extension)
         } else if matches.is_present("versionsort") || sort == Some("version") {
             Some(Self::Version)
+        } else if sort == Some("git") {
+            Some(Self::GitStatus)
         } else {
             None
         }
@@ -290,6 +293,23 @@ mod test_sort_column {
         );
     }
 
+    #[cfg(all(
+        feature = "git",
+        not(any(
+            all(target_os = "linux", target_arch = "arm"),
+            all(windows, target_arch = "x86", target_env = "gnu")
+        ))
+    ))]
+    #[test]
+    fn test_from_arg_matches_sort_git() {
+        let argv = vec!["lsd", "--sort", "git"];
+        let matches = app::build().get_matches_from_safe(argv).unwrap();
+        assert_eq!(
+            Some(SortColumn::GitStatus),
+            SortColumn::from_arg_matches(&matches)
+        );
+    }
+
     #[test]
     fn test_multi_sort() {
         let argv = vec!["lsd", "--sort", "size", "--sort", "time"];
@@ -380,6 +400,17 @@ mod test_sort_column {
             dir_grouping: None,
         });
         assert_eq!(Some(SortColumn::Version), SortColumn::from_config(&c));
+    }
+
+    #[test]
+    fn test_from_config_git_status() {
+        let mut c = Config::with_none();
+        c.sorting = Some(Sorting {
+            column: Some(SortColumn::GitStatus),
+            reverse: None,
+            dir_grouping: None,
+        });
+        assert_eq!(Some(SortColumn::GitStatus), SortColumn::from_config(&c));
     }
 }
 

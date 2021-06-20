@@ -3,6 +3,15 @@ pub mod color;
 pub mod date;
 pub mod dereference;
 pub mod display;
+
+#[cfg(all(
+    feature = "git",
+    not(any(
+        all(target_os = "linux", target_arch = "arm"),
+        all(windows, target_arch = "x86", target_env = "gnu")
+    ))
+))]
+pub mod git_icons;
 pub mod icons;
 pub mod ignore_globs;
 pub mod indicators;
@@ -112,14 +121,17 @@ where
     /// out warnings.
     fn configure_from(matches: &ArgMatches, config: &Config) -> T {
         if let Some(value) = Self::from_arg_matches(matches) {
+            // println!("from arg {}", std::any::type_name::<T>());
             return value;
         }
 
         if let Some(value) = Self::from_environment() {
+            // println!("from env {}", std::any::type_name::<T>());
             return value;
         }
 
         if let Some(value) = Self::from_config(config) {
+            // println!("from config {}", std::any::type_name::<T>());
             return value;
         }
 

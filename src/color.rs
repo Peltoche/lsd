@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 #[allow(dead_code)]
+#[derive(strum::EnumIter)] // for tests
 #[derive(Hash, Debug, Eq, PartialEq, Clone)]
 pub enum Elem {
     /// Node type
@@ -53,7 +54,17 @@ pub enum Elem {
         valid: bool,
     },
 
-    TreeEdge,
+    // TreeEdge, // TODO enable it as we enable a theme for it
+    #[cfg(all(
+        feature = "git",
+        not(any(
+            all(target_os = "linux", target_arch = "arm"),
+            all(windows, target_arch = "x86", target_env = "gnu")
+        ))
+    ))]
+    GitStatus {
+        status: crate::git::GitStatus,
+    },
 }
 
 impl Elem {
@@ -258,6 +269,107 @@ impl Colors {
 
         // TODO add this after we can use file to configure theme
         // m.insert(Elem::TreeEdge, Colour::Fixed(44)); // DarkTurquoise
+
+        // GitStatus
+        #[cfg(all(
+            feature = "git",
+            not(any(
+                all(target_os = "linux", target_arch = "arm"),
+                all(windows, target_arch = "x86", target_env = "gnu")
+            ))
+        ))]
+        {
+            m.insert(
+                Elem::GitStatus {
+                    status: crate::git::GitStatus::Default,
+                },
+                Colour::White,
+            );
+            m.insert(
+                Elem::GitStatus {
+                    status: crate::git::GitStatus::Unmodified,
+                },
+                Colour::White,
+            );
+            m.insert(
+                Elem::GitStatus {
+                    status: crate::git::GitStatus::Ignored,
+                },
+                Colour::Fixed(245),
+            ); // Grey
+            m.insert(
+                Elem::GitStatus {
+                    status: crate::git::GitStatus::NewInIndex,
+                },
+                Colour::Green,
+            );
+            m.insert(
+                Elem::GitStatus {
+                    status: crate::git::GitStatus::NewInWorkdir,
+                },
+                Colour::White,
+            );
+            m.insert(
+                Elem::GitStatus {
+                    status: crate::git::GitStatus::Typechange,
+                },
+                Colour::White,
+            );
+            m.insert(
+                Elem::GitStatus {
+                    status: crate::git::GitStatus::Deleted,
+                },
+                Colour::Red,
+            );
+            m.insert(
+                Elem::GitStatus {
+                    status: crate::git::GitStatus::Renamed,
+                },
+                Colour::Fixed(172),
+            ); // Orange3
+            m.insert(
+                Elem::GitStatus {
+                    status: crate::git::GitStatus::Modified,
+                },
+                Colour::Blue,
+            );
+            m.insert(
+                Elem::GitStatus {
+                    status: crate::git::GitStatus::Conflicted,
+                },
+                Colour::Red,
+            );
+        }
         m
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use strum::IntoEnumIterator;
+
+    #[test]
+    fn test_elem_map_completeness() {
+        let m = Colors::get_light_theme_colour_map();
+        for elem in Elem::iter() {
+            assert!(m.contains_key(&elem));
+        }
+    }
+
+    #[cfg(all(
+        feature = "git",
+        not(any(
+            all(target_os = "linux", target_arch = "arm"),
+            all(windows, target_arch = "x86", target_env = "gnu")
+        ))
+    ))]
+    #[test]
+    fn test_git_status_map_completeness() {
+        let m = Colors::get_light_theme_colour_map();
+        for status in crate::git::GitStatus::iter() {
+            let elem = Elem::GitStatus { status };
+            assert!(m.contains_key(&elem));
+        }
     }
 }

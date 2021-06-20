@@ -300,6 +300,24 @@ fn get_output<'a>(
                     block_vec.push(meta.symlink.render(colors, &flags))
                 }
             }
+            Block::GitStatus => {
+                if let Some(_s) = &meta.git_status {
+                    #[cfg(any(
+                        not(feature = "git"),
+                        all(target_os = "linux", target_arch = "arm"),
+                        all(windows, target_arch = "x86", target_env = "gnu")
+                    ))]
+                    panic!("git feature is disabled");
+                    #[cfg(all(
+                        feature = "git",
+                        not(any(
+                            all(target_os = "linux", target_arch = "arm"),
+                            all(windows, target_arch = "x86", target_env = "gnu")
+                        ))
+                    ))]
+                    block_vec.push(_s.render(colors, icons));
+                }
+            }
         };
         strings.push(ColoredString::from(ANSIStrings(&block_vec).to_string()));
     }
@@ -368,6 +386,7 @@ mod tests {
     use crate::{app, flags, icon, sort};
     use assert_fs::prelude::*;
     use std::path::Path;
+    use tempfile::tempdir;
 
     #[test]
     fn test_display_get_visible_width_without_icons() {
@@ -525,7 +544,7 @@ mod tests {
         dir.child("one.d/.hidden").touch().unwrap();
         let mut metas = Meta::from_path(Path::new(dir.path()), false)
             .unwrap()
-            .recurse_into(42, &flags)
+            .recurse_into(42, &flags, None)
             .unwrap()
             .unwrap();
         sort(&mut metas, &sort::assemble_sorters(&flags));
@@ -556,7 +575,7 @@ mod tests {
         dir.child("dir/file").touch().unwrap();
         let metas = Meta::from_path(Path::new(dir.path()), false)
             .unwrap()
-            .recurse_into(42, &flags)
+            .recurse_into(42, &flags, None)
             .unwrap()
             .unwrap();
         let output = tree(
@@ -595,7 +614,7 @@ mod tests {
         dir.child("dir/file").touch().unwrap();
         let metas = Meta::from_path(Path::new(dir.path()), false)
             .unwrap()
-            .recurse_into(42, &flags)
+            .recurse_into(42, &flags, None)
             .unwrap()
             .unwrap();
         let output = tree(
@@ -633,7 +652,7 @@ mod tests {
         dir.child("one.d/two").touch().unwrap();
         let metas = Meta::from_path(Path::new(dir.path()), false)
             .unwrap()
-            .recurse_into(42, &flags)
+            .recurse_into(42, &flags, None)
             .unwrap()
             .unwrap();
         let output = tree(
@@ -644,5 +663,103 @@ mod tests {
         );
 
         assert!(output.ends_with("└── two\n"));
+    }
+
+    #[test]
+    fn test_folder_path() {
+        let tmp_dir = tempdir().expect("failed to create temp dir");
+
+        let file_path = tmp_dir.path().join("file");
+        std::fs::File::create(&file_path).expect("failed to create the file");
+        let file = Meta::from_path(&file_path, false).unwrap();
+
+        let dir_path = tmp_dir.path().join("dir");
+        std::fs::create_dir(&dir_path).expect("failed to create the dir");
+        let dir = Meta::from_path(&dir_path, false).unwrap();
+
+        assert_eq!(
+            display_folder_path(&dir),
+            format!(
+                "\n{}{}dir:\n",
+                tmp_dir.path().to_string_lossy(),
+                std::path::MAIN_SEPARATOR
+            )
+        );
+
+        assert_eq!(
+            should_display_folder_path(0, &[file.clone()], &Flags::default()),
+            true // doesn't matter since there is no folder
+        );
+        assert_eq!(
+            should_display_folder_path(0, &[dir.clone()], &Flags::default()),
+            false
+        );
+        assert_eq!(
+            should_display_folder_path(0, &[file.clone(), dir.clone()], &Flags::default()),
+            true
+        );
+        assert_eq!(
+            should_display_folder_path(0, &[dir.clone(), dir.clone()], &Flags::default()),
+            true
+        );
+        assert_eq!(
+            should_display_folder_path(0, &[file.clone(), file.clone()], &Flags::default()),
+            true // doesn't matter since there is no folder
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_folder_path_with_links() {
+        let tmp_dir = tempdir().expect("failed to create temp dir");
+
+        let file_path = tmp_dir.path().join("file");
+        std::fs::File::create(&file_path).expect("failed to create the file");
+        let file = Meta::from_path(&file_path, false).unwrap();
+
+        let dir_path = tmp_dir.path().join("dir");
+        std::fs::create_dir(&dir_path).expect("failed to create the dir");
+        let dir = Meta::from_path(&dir_path, false).unwrap();
+
+        let link_path = tmp_dir.path().join("link");
+        std::os::unix::fs::symlink("dir", &link_path).unwrap();
+        let link = Meta::from_path(&link_path, false).unwrap();
+
+        let grid_flags = Flags {
+            layout: Layout::Grid,
+            ..Flags::default()
+        };
+
+        let oneline_flags = Flags {
+            layout: Layout::OneLine,
+            ..Flags::default()
+        };
+
+        assert_eq!(
+            should_display_folder_path(0, &[link.clone()], &grid_flags),
+            false
+        );
+        assert_eq!(
+            should_display_folder_path(0, &[link.clone()], &oneline_flags),
+            true // doesn't matter since this link will be expanded as a directory
+        );
+
+        assert_eq!(
+            should_display_folder_path(0, &[file.clone(), link.clone()], &grid_flags),
+            true
+        );
+        assert_eq!(
+            should_display_folder_path(0, &[file.clone(), link.clone()], &oneline_flags),
+            true // doesn't matter since this link will be expanded as a directory
+        );
+
+        assert_eq!(
+            should_display_folder_path(0, &[dir.clone(), link.clone()], &grid_flags),
+            true
+        );
+        assert_eq!(
+            should_display_folder_path(0, &[dir.clone(), link.clone()], &oneline_flags),
+            true
+        );
     }
 }

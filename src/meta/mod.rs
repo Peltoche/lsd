@@ -1,5 +1,6 @@
 mod date;
 mod filetype;
+pub mod git_file_status;
 mod indicator;
 mod inode;
 mod links;
@@ -14,6 +15,7 @@ mod windows_utils;
 
 pub use self::date::Date;
 pub use self::filetype::FileType;
+pub use self::git_file_status::GitFileStatus;
 pub use self::indicator::Indicator;
 pub use self::inode::INode;
 pub use self::links::Links;
@@ -27,6 +29,20 @@ pub use crate::icon::Icons;
 use crate::flags::{Display, Flags, Layout};
 use crate::print_error;
 
+#[cfg(all(
+    feature = "git",
+    not(any(
+        all(target_os = "linux", target_arch = "arm"),
+        all(windows, target_arch = "x86", target_env = "gnu")
+    ))
+))]
+use crate::git::GitCache;
+#[cfg(any(
+    not(feature = "git"),
+    all(target_os = "linux", target_arch = "arm"),
+    all(windows, target_arch = "x86", target_env = "gnu")
+))]
+use crate::git_stub::GitCache;
 use std::fs::read_link;
 use std::io::{Error, ErrorKind};
 use std::path::{Component, Path, PathBuf};
@@ -45,6 +61,7 @@ pub struct Meta {
     pub inode: INode,
     pub links: Links,
     pub content: Option<Vec<Meta>>,
+    pub git_status: Option<GitFileStatus>,
 }
 
 impl Meta {
@@ -52,6 +69,7 @@ impl Meta {
         &self,
         depth: usize,
         flags: &Flags,
+        cache: Option<&GitCache>,
     ) -> Result<Option<Vec<Meta>>, std::io::Error> {
         if depth == 0 {
             return Ok(None);
@@ -91,6 +109,9 @@ impl Meta {
                 Self::from_path(&self.path.join(Component::ParentDir), flags.dereference.0)?;
             parent_meta.name.name = "..".to_owned();
 
+            current_meta.git_status = cache.and_then(|cache| cache.get(&current_meta.path, true));
+            parent_meta.git_status = cache.and_then(|cache| cache.get(&parent_meta.path, true));
+
             content.push(current_meta);
             content.push(parent_meta);
         }
@@ -121,16 +142,18 @@ impl Meta {
                 }
             };
 
+            let is_directory = entry.file_type()?.is_dir();
+
             // skip files for --tree -d
             if flags.layout == Layout::Tree {
                 if let Display::DirectoryOnly = flags.display {
-                    if !entry.file_type()?.is_dir() {
+                    if !is_directory {
                         continue;
                     }
                 }
             }
 
-            match entry_meta.recurse_into(depth - 1, &flags) {
+            match entry_meta.recurse_into(depth - 1, &flags, cache) {
                 Ok(content) => entry_meta.content = content,
                 Err(err) => {
                     print_error!("{}: {}.", path.display(), err);
@@ -138,6 +161,8 @@ impl Meta {
                 }
             };
 
+            entry_meta.git_status =
+                cache.and_then(|cache| cache.get(&entry_meta.path, is_directory));
             content.push(entry_meta);
         }
 
@@ -238,6 +263,7 @@ impl Meta {
             name,
             file_type,
             content: None,
+            git_status: None,
         })
     }
 }
