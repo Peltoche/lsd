@@ -7,13 +7,16 @@ use crate::config_file::Config;
 use crate::print_error;
 
 use clap::ArgMatches;
+use serde::de::{self, Deserializer, Visitor};
 use serde::Deserialize;
+use std::fmt;
 
 /// A collection of flags on how to use colors.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Color {
     /// When to use color.
     pub when: ColorOption,
+    pub theme: ThemeOption,
 }
 
 impl Color {
@@ -22,7 +25,73 @@ impl Color {
     /// The [ColorOption] is configured with their respective [Configurable] implementation.
     pub fn configure_from(matches: &ArgMatches, config: &Config) -> Self {
         let when = ColorOption::configure_from(matches, config);
-        Self { when }
+        let theme = ThemeOption::from_config(config);
+        Self { when, theme }
+    }
+}
+
+/// ThemeOption could be one of the following:
+/// Custom(*.yaml): use the YAML theme file as theme file
+/// if error happened, use the default theme
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum ThemeOption {
+    NoColor,
+    Default,
+    NoLscolors,
+    Custom(String),
+}
+
+impl ThemeOption {
+    fn from_config(config: &Config) -> ThemeOption {
+        if let Some(classic) = config.classic {
+            if classic {
+                return ThemeOption::NoColor;
+            }
+        }
+        if let Some(c) = &config.color {
+            if let Some(t) = &c.theme {
+                return t.clone();
+            }
+        }
+
+        ThemeOption::default()
+    }
+}
+
+impl Default for ThemeOption {
+    fn default() -> Self {
+        ThemeOption::Default
+    }
+}
+
+impl<'de> de::Deserialize<'de> for ThemeOption {
+    fn deserialize<D>(deserializer: D) -> Result<ThemeOption, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ThemeOptionVisitor;
+
+        impl<'de> Visitor<'de> for ThemeOptionVisitor {
+            type Value = ThemeOption;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("`no-color`, `default`, `no-lscolors` or <theme-file-path>")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<ThemeOption, E>
+            where
+                E: de::Error,
+            {
+                match value {
+                    "no-color" => Ok(ThemeOption::NoColor),
+                    "default" => Ok(ThemeOption::Default),
+                    "no-lscolors" => Ok(ThemeOption::NoLscolors),
+                    str => Ok(ThemeOption::Custom(str.to_string())),
+                }
+            }
+        }
+
+        deserializer.deserialize_identifier(ThemeOptionVisitor)
     }
 }
 
@@ -84,7 +153,7 @@ impl Configurable<Self> for ColorOption {
         }
 
         if let Some(color) = &config.color {
-            Some(color.when)
+            color.when
         } else {
             None
         }
@@ -172,7 +241,8 @@ mod test_color_option {
     fn test_from_config_always() {
         let mut c = Config::with_none();
         c.color = Some(config_file::Color {
-            when: ColorOption::Always,
+            when: Some(ColorOption::Always),
+            theme: None,
         });
 
         assert_eq!(Some(ColorOption::Always), ColorOption::from_config(&c));
@@ -182,7 +252,8 @@ mod test_color_option {
     fn test_from_config_auto() {
         let mut c = Config::with_none();
         c.color = Some(config_file::Color {
-            when: ColorOption::Auto,
+            when: Some(ColorOption::Auto),
+            theme: None,
         });
         assert_eq!(Some(ColorOption::Auto), ColorOption::from_config(&c));
     }
@@ -191,7 +262,8 @@ mod test_color_option {
     fn test_from_config_never() {
         let mut c = Config::with_none();
         c.color = Some(config_file::Color {
-            when: ColorOption::Never,
+            when: Some(ColorOption::Never),
+            theme: None,
         });
         assert_eq!(Some(ColorOption::Never), ColorOption::from_config(&c));
     }
@@ -200,9 +272,79 @@ mod test_color_option {
     fn test_from_config_classic_mode() {
         let mut c = Config::with_none();
         c.color = Some(config_file::Color {
-            when: ColorOption::Always,
+            when: Some(ColorOption::Always),
+            theme: None,
         });
         c.classic = Some(true);
         assert_eq!(Some(ColorOption::Never), ColorOption::from_config(&c));
+    }
+}
+
+#[cfg(test)]
+mod test_theme_option {
+    use super::ThemeOption;
+    use crate::config_file::{self, Config};
+
+    #[test]
+    fn test_from_config_none_default() {
+        assert_eq!(
+            ThemeOption::Default,
+            ThemeOption::from_config(&Config::with_none())
+        );
+    }
+
+    #[test]
+    fn test_from_config_default() {
+        let mut c = Config::with_none();
+        c.color = Some(config_file::Color {
+            when: None,
+            theme: Some(ThemeOption::Default),
+        });
+
+        assert_eq!(ThemeOption::Default, ThemeOption::from_config(&c));
+    }
+
+    #[test]
+    fn test_from_config_no_color() {
+        let mut c = Config::with_none();
+        c.color = Some(config_file::Color {
+            when: None,
+            theme: Some(ThemeOption::NoColor),
+        });
+        assert_eq!(ThemeOption::NoColor, ThemeOption::from_config(&c));
+    }
+
+    #[test]
+    fn test_from_config_no_lscolor() {
+        let mut c = Config::with_none();
+        c.color = Some(config_file::Color {
+            when: None,
+            theme: Some(ThemeOption::NoLscolors),
+        });
+        assert_eq!(ThemeOption::NoLscolors, ThemeOption::from_config(&c));
+    }
+
+    #[test]
+    fn test_from_config_bad_file_flag() {
+        let mut c = Config::with_none();
+        c.color = Some(config_file::Color {
+            when: None,
+            theme: Some(ThemeOption::Custom("not-existed".to_string())),
+        });
+        assert_eq!(
+            ThemeOption::Custom("not-existed".to_string()),
+            ThemeOption::from_config(&c)
+        );
+    }
+
+    #[test]
+    fn test_from_config_classic_mode() {
+        let mut c = Config::with_none();
+        c.color = Some(config_file::Color {
+            when: None,
+            theme: Some(ThemeOption::Default),
+        });
+        c.classic = Some(true);
+        assert_eq!(ThemeOption::NoColor, ThemeOption::from_config(&c));
     }
 }

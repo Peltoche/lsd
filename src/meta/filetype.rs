@@ -110,11 +110,11 @@ impl FileType {
 #[cfg(test)]
 mod test {
     use super::FileType;
-    use crate::color::{Colors, Theme};
+    use crate::color::{Colors, ThemeOption};
     use crate::meta::Meta;
     #[cfg(unix)]
     use crate::meta::Permissions;
-    use ansi_term::Colour;
+    use crossterm::style::{Color, Stylize};
     #[cfg(unix)]
     use std::fs::File;
     #[cfg(unix)]
@@ -135,10 +135,13 @@ mod test {
         File::create(&file_path).expect("failed to create file");
         let meta = file_path.metadata().expect("failed to get metas");
 
-        let colors = Colors::new(Theme::NoLscolors);
+        let colors = Colors::new(ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, None, &Permissions::from(&meta));
 
-        assert_eq!(Colour::Fixed(184).paint("."), file_type.render(&colors));
+        assert_eq!(
+            ".".to_string().with(Color::AnsiValue(184)),
+            file_type.render(&colors)
+        );
     }
 
     #[test]
@@ -148,10 +151,13 @@ mod test {
             .expect("failed to get tempdir path");
         let metadata = tmp_dir.path().metadata().expect("failed to get metas");
 
-        let colors = Colors::new(Theme::NoLscolors);
+        let colors = Colors::new(ThemeOption::NoLscolors);
         let file_type = FileType::new(&metadata, None, &meta.permissions);
 
-        assert_eq!(Colour::Fixed(33).paint("d"), file_type.render(&colors));
+        assert_eq!(
+            "d".to_string().with(Color::AnsiValue(33)),
+            file_type.render(&colors)
+        );
     }
 
     #[test]
@@ -170,10 +176,13 @@ mod test {
             .symlink_metadata()
             .expect("failed to get metas");
 
-        let colors = Colors::new(Theme::NoLscolors);
+        let colors = Colors::new(ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, Some(&meta), &Permissions::from(&meta));
 
-        assert_eq!(Colour::Fixed(44).paint("l"), file_type.render(&colors));
+        assert_eq!(
+            "l".to_string().with(Color::AnsiValue(44)),
+            file_type.render(&colors)
+        );
     }
 
     #[test]
@@ -192,10 +201,13 @@ mod test {
             .symlink_metadata()
             .expect("failed to get metas");
 
-        let colors = Colors::new(Theme::NoLscolors);
+        let colors = Colors::new(ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, Some(&meta), &Permissions::from(&meta));
 
-        assert_eq!(Colour::Fixed(44).paint("l"), file_type.render(&colors));
+        assert_eq!(
+            "l".to_string().with(Color::AnsiValue(44)),
+            file_type.render(&colors)
+        );
     }
 
     #[test]
@@ -213,10 +225,13 @@ mod test {
         assert_eq!(true, success, "failed to exec mkfifo");
         let meta = pipe_path.metadata().expect("failed to get metas");
 
-        let colors = Colors::new(Theme::NoLscolors);
+        let colors = Colors::new(ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, None, &Permissions::from(&meta));
 
-        assert_eq!(Colour::Fixed(44).paint("|"), file_type.render(&colors));
+        assert_eq!(
+            "|".to_string().with(Color::AnsiValue(44)),
+            file_type.render(&colors)
+        );
     }
 
     #[test]
@@ -238,10 +253,13 @@ mod test {
         assert_eq!(true, success, "failed to exec mknod");
         let meta = char_device_path.metadata().expect("failed to get metas");
 
-        let colors = Colors::new(Theme::NoLscolors);
+        let colors = Colors::new(ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, None, &Permissions::from(&meta));
 
-        assert_eq!(Colour::Fixed(44).paint("c"), file_type.render(&colors));
+        assert_eq!(
+            "c".to_string().with(Color::AnsiValue(44)),
+            file_type.render(&colors)
+        );
     }
 
     #[test]
@@ -254,9 +272,12 @@ mod test {
         UnixListener::bind(&socket_path).expect("failed to create the socket");
         let meta = socket_path.metadata().expect("failed to get metas");
 
-        let colors = Colors::new(Theme::NoLscolors);
+        let colors = Colors::new(ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, None, &Permissions::from(&meta));
 
-        assert_eq!(Colour::Fixed(44).paint("s"), file_type.render(&colors));
+        assert_eq!(
+            "s".to_string().with(Color::AnsiValue(44)),
+            file_type.render(&colors)
+        );
     }
 }

@@ -1,6 +1,8 @@
-use crate::color::{self, Colors};
+use crate::color::Colors;
 use crate::display;
-use crate::flags::{ColorOption, Display, Flags, IconOption, IconTheme, Layout, SortOrder};
+use crate::flags::{
+    ColorOption, Display, Flags, IconOption, IconTheme, Layout, SortOrder, ThemeOption,
+};
 use crate::icon::{self, Icons};
 use crate::meta::Meta;
 use crate::{print_error, print_output, sort};
@@ -36,13 +38,13 @@ impl Core {
         let tty_available = terminal_size().is_some(); // terminal_size allows us to know if the stdout is a tty or not.
 
         #[cfg(target_os = "windows")]
-        let console_color_ok = ansi_term::enable_ansi_support().is_ok();
+        let console_color_ok = crossterm::ansi_support::supports_ansi();
 
         let mut inner_flags = flags.clone();
 
         let color_theme = match (tty_available && console_color_ok, flags.color.when) {
-            (_, ColorOption::Never) | (false, ColorOption::Auto) => color::Theme::NoColor,
-            _ => color::Theme::Default,
+            (_, ColorOption::Never) | (false, ColorOption::Auto) => ThemeOption::NoColor,
+            _ => flags.color.theme.clone(),
         };
 
         let icon_theme = match (tty_available, flags.icons.when, flags.icons.theme) {

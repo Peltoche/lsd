@@ -53,10 +53,10 @@ impl Date {
 #[cfg(test)]
 mod test {
     use super::Date;
-    use crate::color::{Colors, Theme};
+    use crate::color::{Colors, ThemeOption};
     use crate::flags::{DateFlag, Flags};
-    use ansi_term::Colour;
     use chrono::{DateTime, Duration, Local};
+    use crossterm::style::{Color, Stylize};
     use std::io;
     use std::path::Path;
     use std::process::{Command, ExitStatus};
@@ -108,12 +108,15 @@ mod test {
             .success();
         assert!(success, "failed to exec touch");
 
-        let colors = Colors::new(Theme::Default);
+        let colors = Colors::new(ThemeOption::Default);
         let date = Date::from(&file_path.metadata().unwrap());
         let flags = Flags::default();
 
         assert_eq!(
-            Colour::Fixed(40).paint(creation_date.format("%c").to_string()),
+            creation_date
+                .format("%c")
+                .to_string()
+                .with(Color::AnsiValue(40)),
             date.render(&colors, &flags)
         );
 
@@ -132,12 +135,15 @@ mod test {
             .success();
         assert!(success, "failed to exec touch");
 
-        let colors = Colors::new(Theme::Default);
+        let colors = Colors::new(ThemeOption::Default);
         let date = Date::from(&file_path.metadata().unwrap());
         let flags = Flags::default();
 
         assert_eq!(
-            Colour::Fixed(42).paint(creation_date.format("%c").to_string()),
+            creation_date
+                .format("%c")
+                .to_string()
+                .with(Color::AnsiValue(42)),
             date.render(&colors, &flags)
         );
 
@@ -156,12 +162,15 @@ mod test {
             .success();
         assert!(success, "failed to exec touch");
 
-        let colors = Colors::new(Theme::Default);
+        let colors = Colors::new(ThemeOption::Default);
         let date = Date::from(&file_path.metadata().unwrap());
         let flags = Flags::default();
 
         assert_eq!(
-            Colour::Fixed(36).paint(creation_date.format("%c").to_string()),
+            creation_date
+                .format("%c")
+                .to_string()
+                .with(Color::AnsiValue(36)),
             date.render(&colors, &flags)
         );
 
@@ -180,14 +189,14 @@ mod test {
             .success();
         assert!(success, "failed to exec touch");
 
-        let colors = Colors::new(Theme::Default);
+        let colors = Colors::new(ThemeOption::Default);
         let date = Date::from(&file_path.metadata().unwrap());
 
         let mut flags = Flags::default();
         flags.date = DateFlag::Relative;
 
         assert_eq!(
-            Colour::Fixed(36).paint("2 days ago"),
+            "2 days ago".to_string().with(Color::AnsiValue(36)),
             date.render(&colors, &flags)
         );
 
@@ -205,13 +214,16 @@ mod test {
             .success();
         assert_eq!(true, success, "failed to exec touch");
 
-        let colors = Colors::new(Theme::Default);
+        let colors = Colors::new(ThemeOption::Default);
         let date = Date::from(&file_path.metadata().unwrap());
 
         let mut flags = Flags::default();
         flags.date = DateFlag::Relative;
 
-        assert_eq!(Colour::Fixed(40).paint("now"), date.render(&colors, &flags));
+        assert_eq!(
+            "now".to_string().with(Color::AnsiValue(40)),
+            date.render(&colors, &flags)
+        );
 
         fs::remove_file(file_path).unwrap();
     }
@@ -227,14 +239,17 @@ mod test {
             .success();
         assert_eq!(true, success, "failed to exec touch");
 
-        let colors = Colors::new(Theme::Default);
+        let colors = Colors::new(ThemeOption::Default);
         let date = Date::from(&file_path.metadata().unwrap());
 
         let mut flags = Flags::default();
         flags.date = DateFlag::ISO;
 
         assert_eq!(
-            Colour::Fixed(40).paint(creation_date.format("%m-%d %R").to_string()),
+            creation_date
+                .format("%m-%d %R")
+                .to_string()
+                .with(Color::AnsiValue(40)),
             date.render(&colors, &flags)
         );
 
@@ -252,14 +267,17 @@ mod test {
             .success();
         assert_eq!(true, success, "failed to exec touch");
 
-        let colors = Colors::new(Theme::Default);
+        let colors = Colors::new(ThemeOption::Default);
         let date = Date::from(&file_path.metadata().unwrap());
 
         let mut flags = Flags::default();
         flags.date = DateFlag::ISO;
 
         assert_eq!(
-            Colour::Fixed(36).paint(creation_date.format("%F").to_string()),
+            creation_date
+                .format("%F")
+                .to_string()
+                .with(Color::AnsiValue(36)),
             date.render(&colors, &flags)
         );
 

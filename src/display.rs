@@ -1,9 +1,8 @@
-use crate::color::{ColoredString, Colors};
+use crate::color::{Colors, Elem};
 use crate::flags::{Block, Display, Flags, Layout};
 use crate::icon::Icons;
 use crate::meta::name::DisplayOption;
 use crate::meta::{FileType, Meta};
-use ansi_term::{ANSIString, ANSIStrings};
 use std::collections::HashMap;
 use term_grid::{Cell, Direction, Filling, Grid, GridOptions};
 use terminal_size::terminal_size;
@@ -259,13 +258,11 @@ fn get_output<'a>(
     display_option: &DisplayOption,
     padding_rules: &HashMap<Block, usize>,
     tree: (usize, &'a str),
-) -> Vec<ANSIString<'a>> {
-    let mut strings: Vec<ANSIString> = Vec::new();
+) -> Vec<String> {
+    let mut strings: Vec<String> = Vec::new();
     for (i, block) in flags.blocks.0.iter().enumerate() {
         let mut block_vec = if Layout::Tree == flags.layout && tree.0 == i {
-            // TODO: add color after we have theme configuration
-            // vec![colors.colorize(ANSIString::from(tree.1).to_string(), &Elem::TreeEdge)]
-            vec![ANSIString::from(tree.1)]
+            vec![colors.colorize(tree.1.to_string(), &Elem::TreeEdge)]
         } else {
             Vec::new()
         };
@@ -301,7 +298,13 @@ fn get_output<'a>(
                 }
             }
         };
-        strings.push(ColoredString::from(ANSIStrings(&block_vec).to_string()));
+        strings.push(
+            block_vec
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>()
+                .join(""),
+        );
     }
     strings
 }
@@ -388,11 +391,13 @@ mod tests {
                     uid: false,
                 },
             );
-            let output = name.render(
-                &Colors::new(color::Theme::NoColor),
-                &Icons::new(icon::Theme::NoIcon, " ".to_string()),
-                &DisplayOption::FileName,
-            );
+            let output = name
+                .render(
+                    &Colors::new(color::ThemeOption::NoColor),
+                    &Icons::new(icon::Theme::NoIcon, " ".to_string()),
+                    &DisplayOption::FileName,
+                )
+                .to_string();
 
             assert_eq!(get_visible_width(&output), *l);
         }
@@ -421,7 +426,7 @@ mod tests {
             );
             let output = name
                 .render(
-                    &Colors::new(color::Theme::NoColor),
+                    &Colors::new(color::ThemeOption::NoColor),
                     &Icons::new(icon::Theme::Fancy, " ".to_string()),
                     &DisplayOption::FileName,
                 )
@@ -453,17 +458,17 @@ mod tests {
             );
             let output = name
                 .render(
-                    &Colors::new(color::Theme::NoLscolors),
+                    &Colors::new(color::ThemeOption::NoLscolors),
                     &Icons::new(icon::Theme::NoIcon, " ".to_string()),
                     &DisplayOption::FileName,
                 )
                 .to_string();
 
             // check if the color is present.
-            assert_eq!(true, output.starts_with("\u{1b}[38;5;"));
-            assert_eq!(true, output.ends_with("[0m"));
+            assert_eq!(true, output.starts_with("\u{1b}[38;5;"), "start with color");
+            assert_eq!(true, output.ends_with("[39m"), "reset foreground color");
 
-            assert_eq!(get_visible_width(&output), *l);
+            assert_eq!(get_visible_width(&output), *l, "visible match");
         }
     }
 
@@ -489,7 +494,7 @@ mod tests {
             );
             let output = name
                 .render(
-                    &Colors::new(color::Theme::NoColor),
+                    &Colors::new(color::ThemeOption::NoColor),
                     &Icons::new(icon::Theme::NoIcon, " ".to_string()),
                     &DisplayOption::FileName,
                 )
@@ -532,7 +537,7 @@ mod tests {
         let output = tree(
             &metas,
             &flags,
-            &Colors::new(color::Theme::NoColor),
+            &Colors::new(color::ThemeOption::NoColor),
             &Icons::new(icon::Theme::NoIcon, " ".to_string()),
         );
 
@@ -562,7 +567,7 @@ mod tests {
         let output = tree(
             &metas,
             &flags,
-            &Colors::new(color::Theme::NoColor),
+            &Colors::new(color::ThemeOption::NoColor),
             &Icons::new(icon::Theme::NoIcon, " ".to_string()),
         );
 
@@ -601,7 +606,7 @@ mod tests {
         let output = tree(
             &metas,
             &flags,
-            &Colors::new(color::Theme::NoColor),
+            &Colors::new(color::ThemeOption::NoColor),
             &Icons::new(icon::Theme::NoIcon, " ".to_string()),
         );
 
@@ -639,7 +644,7 @@ mod tests {
         let output = tree(
             &metas,
             &flags,
-            &Colors::new(color::Theme::NoColor),
+            &Colors::new(color::ThemeOption::NoColor),
             &Icons::new(icon::Theme::NoIcon, " ".to_string()),
         );
 

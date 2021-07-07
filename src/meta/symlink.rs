@@ -1,6 +1,5 @@
 use crate::color::{ColoredString, Colors, Elem};
 use crate::flags::Flags;
-use ansi_term::{ANSIString, ANSIStrings};
 use std::fs::read_link;
 use std::path::Path;
 
@@ -61,14 +60,18 @@ impl SymLink {
             };
 
             let strings: &[ColoredString] = &[
-                ColoredString::from(format!(" {} ", flag.symlink_arrow)), // ⇒ \u{21d2}
+                ColoredString::new(Colors::default_style(), format!(" {} ", flag.symlink_arrow)), // ⇒ \u{21d2}
                 colors.colorize(target_string, elem),
             ];
 
-            let res = ANSIStrings(strings).to_string();
-            ColoredString::from(res)
+            let res = strings
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>()
+                .join("");
+            ColoredString::new(Colors::default_style(), res)
         } else {
-            ANSIString::from("")
+            ColoredString::new(Colors::default_style(), "".into())
         }
     }
 }
@@ -77,7 +80,7 @@ impl SymLink {
 mod tests {
     use super::SymLink;
     use crate::app;
-    use crate::color::{Colors, Theme};
+    use crate::color::{Colors, ThemeOption};
     use crate::config_file::Config;
     use crate::flags::Flags;
 
@@ -92,7 +95,7 @@ mod tests {
         assert_eq!(
             format!("{}", " ⇒ /target"),
             link.render(
-                &Colors::new(Theme::NoColor),
+                &Colors::new(ThemeOption::NoColor),
                 &Flags::configure_from(&matches, &Config::with_none()).unwrap()
             )
             .to_string()
@@ -110,7 +113,7 @@ mod tests {
         assert_eq!(
             format!("{}", " ⇒ /target"),
             link.render(
-                &Colors::new(Theme::NoColor),
+                &Colors::new(ThemeOption::NoColor),
                 &Flags::configure_from(&matches, &Config::with_none()).unwrap()
             )
             .to_string()

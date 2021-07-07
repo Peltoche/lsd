@@ -171,7 +171,7 @@ mod test {
     use crate::meta::Meta;
     #[cfg(unix)]
     use crate::meta::Permissions;
-    use ansi_term::Colour;
+    use crossterm::style::{Color, Stylize};
     use std::cmp::Ordering;
     use std::fs::{self, File};
     #[cfg(unix)]
@@ -192,12 +192,12 @@ mod test {
         File::create(&file_path).expect("failed to create file");
         let meta = file_path.metadata().expect("failed to get metas");
 
-        let colors = Colors::new(color::Theme::NoLscolors);
+        let colors = Colors::new(color::ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, None, &Permissions::from(&meta));
         let name = Name::new(&file_path, file_type);
 
         assert_eq!(
-            Colour::Fixed(184).paint(" file.txt"),
+            " file.txt".to_string().with(Color::AnsiValue(184)),
             name.render(&colors, &icons, &DisplayOption::FileName)
         );
     }
@@ -212,10 +212,10 @@ mod test {
         fs::create_dir(&dir_path).expect("failed to create the dir");
         let meta = Meta::from_path(&dir_path, false).unwrap();
 
-        let colors = Colors::new(color::Theme::NoLscolors);
+        let colors = Colors::new(color::ThemeOption::NoLscolors);
 
         assert_eq!(
-            Colour::Fixed(33).paint(" directory"),
+            " directory".to_string().with(Color::AnsiValue(33)),
             meta.name.render(&colors, &icons, &DisplayOption::FileName)
         );
     }
@@ -238,12 +238,12 @@ mod test {
             .expect("failed to get metas");
         let target_meta = symlink_path.metadata().ok();
 
-        let colors = Colors::new(color::Theme::NoLscolors);
+        let colors = Colors::new(color::ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, target_meta.as_ref(), &Permissions::from(&meta));
         let name = Name::new(&symlink_path, file_type);
 
         assert_eq!(
-            Colour::Fixed(44).paint(" target.tmp"),
+            " target.tmp".to_string().with(Color::AnsiValue(44)),
             name.render(&colors, &icons, &DisplayOption::FileName)
         );
     }
@@ -266,12 +266,12 @@ mod test {
             .expect("failed to get metas");
         let target_meta = symlink_path.metadata().ok();
 
-        let colors = Colors::new(color::Theme::NoLscolors);
+        let colors = Colors::new(color::ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, target_meta.as_ref(), &Permissions::from(&meta));
         let name = Name::new(&symlink_path, file_type);
 
         assert_eq!(
-            Colour::Fixed(44).paint(" target.d"),
+            " target.d".to_string().with(Color::AnsiValue(44)),
             name.render(&colors, &icons, &DisplayOption::FileName)
         );
     }
@@ -292,12 +292,12 @@ mod test {
         assert_eq!(true, success, "failed to exec mkfifo");
         let meta = pipe_path.metadata().expect("failed to get metas");
 
-        let colors = Colors::new(color::Theme::NoLscolors);
+        let colors = Colors::new(color::ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, None, &Permissions::from(&meta));
         let name = Name::new(&pipe_path, file_type);
 
         assert_eq!(
-            Colour::Fixed(184).paint(" pipe.tmp"),
+            " pipe.tmp".to_string().with(Color::AnsiValue(184)),
             name.render(&colors, &icons, &DisplayOption::FileName)
         );
     }
@@ -312,7 +312,7 @@ mod test {
         File::create(&file_path).expect("failed to create file");
         let meta = Meta::from_path(&file_path, false).unwrap();
 
-        let colors = Colors::new(color::Theme::NoColor);
+        let colors = Colors::new(color::ThemeOption::NoColor);
 
         assert_eq!(
             "file.txt",
@@ -527,12 +527,12 @@ mod test {
         File::create(&file_path).expect("failed to create file");
         let meta = file_path.metadata().expect("failed to get metas");
 
-        let colors = Colors::new(color::Theme::NoLscolors);
+        let colors = Colors::new(color::ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, None, &Permissions::from(&meta));
         let name = Name::new(&file_path, file_type);
 
         assert_eq!(
-            Colour::Fixed(184).paint(" file\\ttab.txt"),
+            " file\\ttab.txt".to_string().with(Color::AnsiValue(184)),
             name.render(&colors, &icons, &DisplayOption::FileName)
         );
 
@@ -540,12 +540,14 @@ mod test {
         File::create(&file_path).expect("failed to create file");
         let meta = file_path.metadata().expect("failed to get metas");
 
-        let colors = Colors::new(color::Theme::NoLscolors);
+        let colors = Colors::new(color::ThemeOption::NoLscolors);
         let file_type = FileType::new(&meta, None, &Permissions::from(&meta));
         let name = Name::new(&file_path, file_type);
 
         assert_eq!(
-            Colour::Fixed(184).paint(" file\\nnewline.txt"),
+            " file\\nnewline.txt"
+                .to_string()
+                .with(Color::AnsiValue(184)),
             name.render(&colors, &icons, &DisplayOption::FileName)
         );
     }

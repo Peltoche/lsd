@@ -213,6 +213,13 @@ color:
   # When "classic" is set, this is set to "never".
   # Possible values: never, auto, always
   when: auto
+  # How to colorize the output.
+  # When "classic" is set, this is set to "no-color".
+  # Possible values: default, no-color, no-lscolors, <theme-file-name>
+  # when specifying <theme-file-name>, lsd will look up theme file in
+  # XDG Base Directory if relative
+  # The file path if absolute
+  theme: default
 
 # == Date ==
 # This specifies the date format for the date column. The freeform format
@@ -303,6 +310,79 @@ total-size: false
 # Specifies how the symlink arrow display, chars in both ascii and utf8
 symlink-arrow: ⇒
 ```
+
+## Theme
+
+`lsd` can be configured with a theme file to set the colors.
+
+Theme can be configured in the [configuration file](#configuration)(color.theme),
+The valid theme configurations are:
+- `default`: the default color scheme shipped in `lsd`
+- `no-color`: classic mode, there will be just black and white.
+- `no-lscolors`: do not check the `LSCOLORS` env
+- theme-file-name(yaml): use the theme file to specify colors
+
+when configured with the `theme-file-name` which is a `yaml` file,
+`lsd` will look up the theme file in the following way:
+- relative name: check the XDG Base Directory
+- absolute name: use the file path and name to find theme file
+
+Check [Theme file content](#theme-file-content) for details.
+
+### Theme file content
+
+Theme file use the [crossterm](https://crates.io/crates/crossterm)
+configure the colors, check [crossterm](https://docs.rs/crossterm/0.20.0/crossterm/style/enum.Color.html)
+for the supported colors.
+
+Color table: https://upload.wikimedia.org/wikipedia/commons/1/15/Xterm_256color_chart.svg
+
+This is the default theme scheme shipped with `lsd`.
+
+```yaml
+user: 230
+group: 187
+permissions:
+  read: Green
+  write: Yellow
+  exec: Red
+  exec-sticky: 5
+  no-access: 245
+file-type:
+  file:
+    exec-uid: 40
+    uid-no-exec: 184
+    exec-no-uid: 40
+    no-exec-no-uid: 184
+  dir:
+    uid: 33
+    no-uid: 33
+  pipe: 44
+  symlink:
+    default: 44
+    broken: 124
+  block-device: 44
+  char-device: 172
+  socket: 44
+  special: 44
+modified:
+  hour-old: 40
+  day-old: 42
+  older: 36
+size:
+  none: 245
+  small: 229
+  medium: 216
+  large: 172
+inode:
+  valid: 13
+  invalid: 245
+links:
+  valid: 13
+  invalid: 245
+tree-edge: 245
+```
+
 
 ## External Configurations
 
